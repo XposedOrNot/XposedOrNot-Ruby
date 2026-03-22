@@ -19,7 +19,7 @@ breaches = client.get_breaches
 puts "Total known breaches: #{breaches.length}"
 
 # Check a password (hashed locally, never sent in clear text)
-pass_result = client.check_password("password123")
+pass_result = client.check_password("test-password-here")  # replace with the password to check
 if pass_result.exposed?
   puts "Password found #{pass_result.count} times in breaches"
 else
