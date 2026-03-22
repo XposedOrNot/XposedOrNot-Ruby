@@ -13,7 +13,6 @@
 
 <p align="center">
   <a href="https://rubygems.org/gems/xposedornot"><img src="https://img.shields.io/gem/v/xposedornot.svg" alt="Gem Version"></a>
-  <a href="https://github.com/XposedOrNot/XposedOrNot-Ruby/actions"><img src="https://img.shields.io/github/actions/workflow/status/XposedOrNot/XposedOrNot-Ruby/build.yml?branch=main" alt="Build Status"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://www.ruby-lang.org"><img src="https://img.shields.io/badge/Ruby-%3E%3D%203.0-red.svg" alt="Ruby Version"></a>
 </p>
