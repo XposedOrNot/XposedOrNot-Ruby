@@ -29,5 +29,5 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "faraday", "~> 2.0"
   spec.add_dependency "faraday-retry", "~> 2.0"
-  spec.add_dependency "digest-keccak", "~> 1.3"
+  spec.add_dependency "keccak", "~> 1.3"
 end
