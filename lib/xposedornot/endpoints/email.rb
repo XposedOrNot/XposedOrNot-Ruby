@@ -44,6 +44,9 @@ module XposedOrNot
       def check_email_free(email)
         response = request(:get, "/v1/check-email/#{URI.encode_www_form_component(email)}", base: :free)
         Models::EmailBreachResponse.new(response)
+      rescue NotFoundError
+        # 404 means email not found in any breaches — valid result
+        Models::EmailBreachResponse.new({})
       end
 
       # @param email [String]

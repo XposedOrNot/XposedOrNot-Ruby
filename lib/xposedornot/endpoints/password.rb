@@ -17,8 +17,13 @@ module XposedOrNot
         Utils.validate_password(password)
 
         hash_prefix = Utils.keccak_hash_prefix(password)
-        response = request(:get, "/v1/pass/anon/#{hash_prefix}", base: :passwords)
-        Models::PasswordCheckResponse.new(response)
+        begin
+          response = request(:get, "v1/pass/anon/#{hash_prefix}", base: :passwords)
+          Models::PasswordCheckResponse.new(response)
+        rescue NotFoundError
+          # 404 means password hash prefix not found — password is not exposed
+          Models::PasswordCheckResponse.not_found(hash_prefix)
+        end
       end
     end
   end

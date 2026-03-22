@@ -21,6 +21,13 @@ module XposedOrNot
         @count = (search["count"] || "0").to_i
       end
 
+      # Build a not-found response (password is clean).
+      # @param hash_prefix [String]
+      # @return [PasswordCheckResponse]
+      def self.not_found(hash_prefix)
+        new({"SearchPassAnon" => {"anon" => hash_prefix, "char" => "", "count" => "0"}})
+      end
+
       # @return [Boolean] true if the password has been exposed
       def exposed?
         @count.positive?
