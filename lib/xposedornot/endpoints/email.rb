@@ -12,37 +12,47 @@ module XposedOrNot
       # Otherwise, uses the free API.
       #
       # @param email [String] the email address to check
+      # @param include_details [Boolean] request detailed breach information from the
+      #   free API; ignored when an API key is set (the Plus API is always queried
+      #   with detailed results)
       # @return [Models::EmailBreachResponse, Models::EmailBreachDetailedResponse]
       # @raise [ValidationError] if the email is invalid
-      # @raise [NotFoundError] if the email is not found in any breaches
-      def check_email(email)
+      # @raise [NotFoundError] if the Plus API reports the email as not found
+      def check_email(email, include_details: false)
         Utils.validate_email(email)
 
         if @config.plus_api?
           check_email_detailed(email)
         else
-          check_email_free(email)
+          check_email_free(email, include_details: include_details)
         end
       end
 
       # Get breach analytics for an email address.
       #
       # @param email [String] the email address to analyze
+      # @param token [String, nil] optional token for accessing sensitive breach data
       # @return [Models::BreachAnalyticsResponse]
       # @raise [ValidationError] if the email is invalid
-      def breach_analytics(email)
+      def breach_analytics(email, token: nil)
         Utils.validate_email(email)
 
-        response = request(:get, "/v1/breach-analytics", base: :free, params: { email: email })
+        params = { email: email }
+        params[:token] = token if token
+
+        response = request(:get, "/v1/breach-analytics", base: :free, params: params)
         Models::BreachAnalyticsResponse.new(response)
       end
 
       private
 
       # @param email [String]
+      # @param include_details [Boolean]
       # @return [Models::EmailBreachResponse]
-      def check_email_free(email)
-        response = request(:get, "/v1/check-email/#{URI.encode_www_form_component(email)}", base: :free)
+      def check_email_free(email, include_details: false)
+        params = include_details ? { include_details: "true" } : {}
+        response = request(:get, "/v1/check-email/#{URI.encode_www_form_component(email)}", base: :free,
+                                                                                            params: params)
         Models::EmailBreachResponse.new(response)
       rescue NotFoundError
         # 404 means email not found in any breaches — valid result

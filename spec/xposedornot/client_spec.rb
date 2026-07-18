@@ -46,10 +46,11 @@ RSpec.describe XposedOrNot::Client do
     end
 
     it "raises NotFoundError on 404" do
-      stub_request(:get, "https://api.xposedornot.com/v1/check-email/notfound%40example.com")
+      stub_request(:get, "https://api.xposedornot.com/v1/breach-analytics")
+        .with(query: { "email" => "notfound@example.com" })
         .to_return(status: 404, body: "Not Found")
 
-      expect { client.check_email("notfound@example.com") }.to raise_error(XposedOrNot::NotFoundError)
+      expect { client.breach_analytics("notfound@example.com") }.to raise_error(XposedOrNot::NotFoundError)
     end
 
     it "raises APIError on 500" do

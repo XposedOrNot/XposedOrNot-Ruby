@@ -23,6 +23,38 @@ RSpec.describe XposedOrNot::Endpoints::Email do
         expect(result.count).to eq(3)
       end
 
+      it "parses email and status from the response" do
+        stub_request(:get, "https://api.xposedornot.com/v1/check-email/test%40example.com")
+          .to_return(
+            status: 200,
+            body: '{"breaches": [["Adobe"]], "email": "test@example.com", "status": "success"}'
+          )
+
+        result = client.check_email("test@example.com")
+
+        expect(result.email).to eq("test@example.com")
+        expect(result.status).to eq("success")
+      end
+
+      it "parses a flat breaches list" do
+        stub_request(:get, "https://api.xposedornot.com/v1/check-email/test%40example.com")
+          .to_return(status: 200, body: '{"breaches": ["Adobe", "LinkedIn"]}')
+
+        result = client.check_email("test@example.com")
+
+        expect(result.breaches).to eq(%w[Adobe LinkedIn])
+      end
+
+      it "sends include_details param when requested" do
+        stub_request(:get, "https://api.xposedornot.com/v1/check-email/test%40example.com")
+          .with(query: { "include_details" => "true" })
+          .to_return(status: 200, body: '{"breaches": [["Adobe"]]}')
+
+        result = client.check_email("test@example.com", include_details: true)
+
+        expect(result.breaches).to eq(%w[Adobe])
+      end
+
       it "returns an EmailBreachResponse with empty breaches" do
         stub_request(:get, "https://api.xposedornot.com/v1/check-email/clean%40example.com")
           .to_return(status: 200, body: '{"breaches": [[]]}')
@@ -33,12 +65,15 @@ RSpec.describe XposedOrNot::Endpoints::Email do
         expect(result.count).to eq(0)
       end
 
-      it "raises NotFoundError when email not found" do
+      it "returns an empty response when the email is not found (404)" do
         stub_request(:get, "https://api.xposedornot.com/v1/check-email/nobody%40example.com")
-          .to_return(status: 404, body: "Not Found")
+          .to_return(status: 404, body: '{"Error": "Not found"}')
 
-        expect { client.check_email("nobody@example.com") }
-          .to raise_error(XposedOrNot::NotFoundError)
+        result = client.check_email("nobody@example.com")
+
+        expect(result).to be_a(XposedOrNot::Models::EmailBreachResponse)
+        expect(result.breached?).to be false
+        expect(result.count).to eq(0)
       end
     end
 
@@ -129,9 +164,9 @@ RSpec.describe XposedOrNot::Endpoints::Email do
             }
           ]
         },
-        "BreachesSummary" => { "total" => 1 },
+        "BreachesSummary" => { "site" => "Adobe;LinkedIn;Dropbox" },
         "BreachMetrics" => { "risk" => "high" },
-        "PastesSummary" => { "total" => 0 },
+        "PastesSummary" => { "cnt" => 2 },
         "ExposedPastes" => []
       }
     end
@@ -146,10 +181,23 @@ RSpec.describe XposedOrNot::Endpoints::Email do
       expect(result).to be_a(XposedOrNot::Models::BreachAnalyticsResponse)
       expect(result.breaches_details.length).to eq(1)
       expect(result.breaches_details.first.breach_id).to eq("Adobe")
-      expect(result.breaches_summary).to eq({ "total" => 1 })
+      expect(result.breaches_summary).to eq({ "site" => "Adobe;LinkedIn;Dropbox" })
       expect(result.breach_metrics).to eq({ "risk" => "high" })
-      expect(result.pastes_summary).to eq({ "total" => 0 })
+      expect(result.pastes_summary).to eq({ "cnt" => 2 })
       expect(result.exposed_pastes).to eq([])
+    end
+
+    it "parses breach names from the semicolon-separated site summary" do
+      stub_request(:get, "https://api.xposedornot.com/v1/breach-analytics")
+        .with(query: { "email" => "test@example.com" })
+        .to_return(status: 200, body: analytics_response.to_json)
+
+      result = client.breach_analytics("test@example.com")
+
+      expect(result.breach_names).to eq(%w[Adobe LinkedIn Dropbox])
+      expect(result.breaches_count).to eq(3)
+      expect(result.exposures_count).to eq(1)
+      expect(result.pastes_count).to eq(2)
     end
 
     it "sends email as query parameter" do
@@ -158,6 +206,16 @@ RSpec.describe XposedOrNot::Endpoints::Email do
         .to_return(status: 200, body: analytics_response.to_json)
 
       client.breach_analytics("user@test.com")
+    end
+
+    it "sends the optional token param" do
+      stub_request(:get, "https://api.xposedornot.com/v1/breach-analytics")
+        .with(query: { "email" => "test@example.com", "token" => "sensitive-token" })
+        .to_return(status: 200, body: analytics_response.to_json)
+
+      result = client.breach_analytics("test@example.com", token: "sensitive-token")
+
+      expect(result).to be_a(XposedOrNot::Models::BreachAnalyticsResponse)
     end
 
     it "raises ValidationError for invalid email" do

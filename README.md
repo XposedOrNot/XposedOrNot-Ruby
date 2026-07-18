@@ -30,9 +30,10 @@
 - [Requirements](#requirements)
 - [Quick Start](#quick-start)
 - [API Reference](#api-reference)
-  - [check_email](#check_emailemail)
-  - [get_breaches](#get_breachesdomain)
-  - [breach_analytics](#breach_analyticsemail)
+  - [check_email](#check_emailemail-include_details-false)
+  - [get_breaches](#get_breachesdomain-breach_id)
+  - [get_domain_breaches](#get_domain_breaches)
+  - [breach_analytics](#breach_analyticsemail-token-nil)
   - [check_password](#check_passwordpassword)
 - [Error Handling](#error-handling)
 - [Rate Limits](#rate-limits)
@@ -104,9 +105,12 @@ See [Configuration](#configuration) for all available options.
 
 ### Methods
 
-#### `check_email(email)`
+#### `check_email(email, include_details: false)`
 
-Check if an email address has been exposed in any data breaches. When an API key is configured, uses the Plus API for detailed results including `breach_id` and `password_risk`. Otherwise, uses the free API.
+Check if an email address has been exposed in any data breaches.
+
+- **Without API key**: Uses the free API, returns `EmailBreachResponse` with breach names only. Pass `include_details: true` to request detailed breach information.
+- **With API key**: Uses the Plus API (`plus-api.xposedornot.com`), returns `EmailBreachDetailedResponse` with full breach details (`include_details` is ignored - the Plus API is always queried with detailed results).
 
 ```ruby
 # Free API
@@ -122,9 +126,9 @@ puts result.breaches.first.breach_id
 puts result.breaches.first.password_risk
 ```
 
-#### `get_breaches(domain:)`
+#### `get_breaches(domain:, breach_id:)`
 
-Get a list of all known data breaches, optionally filtered by domain.
+Get a list of all known data breaches, optionally filtered by domain or breach ID.
 
 ```ruby
 # Get all breaches
@@ -132,6 +136,9 @@ breaches = client.get_breaches
 
 # Filter by domain
 adobe_breaches = client.get_breaches(domain: 'adobe.com')
+
+# Fetch a specific breach by ID
+adobe = client.get_breaches(breach_id: 'Adobe')
 
 breaches.each do |breach|
   puts "#{breach.breach_id} - #{breach.domain} (#{breach.exposed_records} records)"
@@ -143,18 +150,37 @@ end
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `domain` | `String` | Optional. Filter breaches by domain |
+| `breach_id` | `String` | Optional. Fetch a specific breach by ID |
 
 **Returns:** `Array<Models::Breach>` with properties such as `breach_id`, `breached_date`, `domain`, `industry`, `exposed_data`, `exposed_records`, and `verified`.
 
-#### `breach_analytics(email)`
+#### `get_domain_breaches`
 
-Get detailed breach analytics for an email address, including breach summaries, metrics, and paste exposures.
+Get breach information for domains verified against your API key (requires an API key with verified domains configured at [console.xposedornot.com](https://console.xposedornot.com)).
+
+```ruby
+client = XposedOrNot::Client.new(api_key: 'your-api-key')
+report = client.get_domain_breaches
+
+puts report.domain_summary   # Breach counts per domain
+puts report.yearly_metrics   # Breach counts by year
+puts report.top10_breaches   # Top 10 largest breaches
+
+report.breaches_details.each do |record|
+  puts "#{record.email} #{record.domain} #{record.breach}"
+end
+```
+
+#### `breach_analytics(email, token: nil)`
+
+Get detailed breach analytics for an email address, including breach summaries, metrics, and paste exposures. Pass `token` to access sensitive breach data.
 
 ```ruby
 analytics = client.breach_analytics('user@example.com')
 
+puts analytics.breaches_count     # Number of breaches
+puts analytics.breach_names       # Names of breaches the email was found in
 puts analytics.breaches_details.length
-puts analytics.breaches_summary
 puts analytics.breach_metrics
 puts analytics.exposed_pastes
 ```
